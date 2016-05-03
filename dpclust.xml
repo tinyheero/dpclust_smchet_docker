@@ -7,14 +7,14 @@
 		<container type="docker">dpclust</container>
 	</requirements>
 	<command interpreter="Rscript"><![CDATA[
-        dpc.R ${input_vcf} ${sample_number} ${input_battenberg} ${cellularity}
+        dpc.R ${input_vcf} ${sample_number} ${input_battenberg} ${input_cellularity}
 	]]></command>
 
 	<inputs>
 		<param format="vcf" name="input_vcf" type="data" label="VCF file" help="" />
 		<param format="txt" name="input_battenberg" type="data" label="Battenberg file" help="" />
 		<param type="integer" name="sample_number" label="Sample number" help="The ith sample column in the VCF file" value="1"/>
-		<param type="float" name="cellularity" label="Cellularity" help="The sample cellularity" value="1.0"/>
+		<param name="input_cellularity" type="float" value="1.0" label="Cellularity" help="The sample cellularity" />
 	</inputs>
 
 	<outputs>
@@ -27,7 +27,7 @@
 	</outputs>
 
 	<help>
-DPClust pipeline implementation
+        DPClust pipeline implementation
 	</help>
 
 	<tests>
