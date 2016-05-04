@@ -255,9 +255,10 @@ createAlleleCountsFile = function(vcfdat, datacol, namecol, outfile) {
     tumour_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol]), split = ":", fixed = TRUE)))
     colnames(tumour_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
     # get the number of mutant reads into mutReads and the total number of reads at each mutation into totalReads, then run the next line
-    totalReads <- as.integer(as.vector(tumour_stat[,'DP']))
+    # totalReads <- as.integer(as.vector(tumour_stat[,'DP']))
     mutCount =  as.integer(unlist(lapply(strsplit(as.vector(tumour_stat[,'AD']),','),'[[',2)))
-    wtCount = totalReads - mutCount
+    # wtCount = totalReads - mutCount
+    wtCount = as.integer(unlist(lapply(strsplit(as.vector(tumour_stat[,'AD']),','),'[[',1)))
     counts_table = mutwt2allelecounts(counts.alt=mutCount, 
                                       counts.ref=wtCount, 
                                       allele.alt=as.character(vcfdat$V5), 
@@ -395,7 +396,9 @@ Gibbs.subclone.density.est(GS.data.binomial,
                             density.file = density.file, 
                             post.burn.in.start = burn.in, 
                             post.burn.in.stop = iter, 
-                            y.max=50)
+                            y.max=50,
+                            totalCopyNumber=dat$subclonal.CN,
+                            no.chrs.bearing.mut=dat$no.chrs.bearing.mut)
 
 #cluster assignment
 cluster.assignment <- getClusterAssignments(GS.data.binomial, density.file = density.file, burn.in = burn.in)
