@@ -119,7 +119,6 @@ Gibbs.subclone.density.est <- function(GS.data, pngFile, density.file = gsub(".p
   }
 
   if(!is.na(no.chrs.bearing.mut)){
-    print("Using CCF")
     mutationCopyNumber = mutationCopyNumber / no.chrs.bearing.mut
     xlabel = "fraction of tumour cells"
   }
@@ -312,10 +311,7 @@ args = commandArgs(TRUE)
 vcfdat = read.table(args[1],sep='\t',comment.char='#', stringsAsFactors=F)
 datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
-#battenberg_rho_psi_file = toString(args[4])
-#sex = toString(args[5])
 cellularity = as.numeric(args[4])
-#cellularity = 1
 sex = "male"
 
 
@@ -326,14 +322,6 @@ battenberg_rho_psi_file = "temp_rho_psi.txt"
 write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, col.names=T, row.names=T, sep="\t")
 rm(rho_psi)
 dat = read.table(battenberg_rho_psi_file)
-print(dat)
-
-
-# Temp store the cellularity
-#rho_psi = read.table("/opt/galaxy/tools/template_rho_psi.txt", header=T, stringsAsFactors=F)
-#rho_psi["FRAC_GENOME", "psi"] = cellularity
-#battenberg_rho_psi_file = paste0("/tmp/", as.numeric(as.POSIXct("2013-09-16 2:13:46 EST")), ".txt")
-#write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, sep="\t", row.names=T)
 
 iter = 1000
 burn.in = 300
@@ -422,8 +410,6 @@ if (length(removed_indices) > 0) {
             counter = counter + 1
         }
     }
-    print(length(complete_assignments))
-    print(sum(is.na(complete_assignments)))
     assignments = complete_assignments
 }
     
