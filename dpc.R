@@ -119,6 +119,7 @@ Gibbs.subclone.density.est <- function(GS.data, pngFile, density.file = gsub(".p
   }
 
   if(!is.na(no.chrs.bearing.mut)){
+    print("Using CCF")
     mutationCopyNumber = mutationCopyNumber / no.chrs.bearing.mut
     xlabel = "fraction of tumour cells"
   }
@@ -313,8 +314,8 @@ datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
 #battenberg_rho_psi_file = toString(args[4])
 #sex = toString(args[5])
-#cellularity = as.numeric(args[4])
-cellularity = 1
+cellularity = as.numeric(args[4])
+#cellularity = 1
 sex = "male"
 
 
@@ -378,18 +379,13 @@ removed_indices = dataset$removed_indices
 
 #Gibbs sampler
 GS.data.binomial = subclone.dirichlet.gibbs(y=dat$mut.count,
-                                            N=dat$WT.count,
+                                            N=dat$WT.count+dat$mut.count,
                                             totalCopyNumber=dat$subclonal.CN,
                                             cellularity=cellularity,
                                             no.chrs.bearing.mut=dat$no.chrs.bearing.mut,
                                             iter=iter)
-#Gibbs.subclone.density.est(GS.data.binomial,
-#                           "DirichletProcessplotBinomial.png", 
-#                           post.burn.in.start = burn.in, 
-#                           post.burn.in.stop = iter, 
-#                           y.max=50)
 
-#density estimator
+# Density estimator
 density.file = "density.txt"
 Gibbs.subclone.density.est(GS.data.binomial,
                             "DirichletProcessplotBinomial.png", 
@@ -397,7 +393,7 @@ Gibbs.subclone.density.est(GS.data.binomial,
                             post.burn.in.start = burn.in, 
                             post.burn.in.stop = iter, 
                             y.max=50,
-                            totalCopyNumber=dat$subclonal.CN,
+                            mutationCopyNumber=dat$mutation.copy.number,
                             no.chrs.bearing.mut=dat$no.chrs.bearing.mut)
 
 #cluster assignment
