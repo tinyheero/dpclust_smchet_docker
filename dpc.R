@@ -326,6 +326,7 @@ dat = read.table(battenberg_rho_psi_file)
 iter = 1000
 burn.in = 300
 namecol = 9
+min.frac.snvs = 0.01
 
 #########################################################################
 # Perform preprocessing
