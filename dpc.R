@@ -393,8 +393,7 @@ occupied.clusters = sort(unique(cluster.assignment$most.likely.cluster))
 no.clusters = length(occupied.clusters)
 optima = cluster.assignment$localOptima[occupied.clusters]
 assignments = match(cluster.assignment$most.likely.cluster,occupied.clusters)
-
-print(length(assignments))
+no.muts = length(assignments)
 
 # Spike the removed mutations back in
 if (length(removed_indices) > 0) {
@@ -434,7 +433,6 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
 final_clusters_table$location = final_clusters_table$location / cellularity
 
 cellularity = max(optima)
-no.muts = length(assignments)
 co.clustering = array(0,c(no.muts,no.muts))
 for(c in 1:no.clusters){
 	indices = which(assignments==c)
