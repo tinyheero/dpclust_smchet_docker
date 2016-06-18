@@ -413,6 +413,25 @@ if (length(removed_indices) > 0) {
     assignments = complete_assignments
 }
     
+final_clusters_table = data.frame(cbind(1:no.clusters,table(assignments),optima))
+colnames(final_clusters_table) = c("cluster.no", "no.of.mutations", "location")
+# Screen for too small clusters and remove them
+if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
+  rowids = which(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))
+  for (rowid in rowids) {
+    clusterid = final_clusters_table$cluster.no[rowid]
+    snvs_assigned = final_assignments$cluster==clusterid
+    snvs_assigned[is.na(snvs_assigned)] = F
+    
+    # Reset the mutation assignments
+    assignments[snvs_assigned] = NA
+  }
+  final_clusters_table = final_clusters_table[-rowids,]
+}
+
+# Convert the CCF cluster locations into CP
+final_clusters_table$location = final_clusters_table$location / cellularity
+
 cellularity = max(optima)
 no.muts = length(assignments)
 co.clustering = array(0,c(no.muts,no.muts))
@@ -420,13 +439,14 @@ for(c in 1:no.clusters){
 	indices = which(assignments==c)
 	co.clustering[indices,indices] = 1
 }
+
 print("Writing challenge output files")
 print("1A")
 write.table(cellularity,"subchallenge1A.txt",row.names=F,col.names=F,quote=F,sep="\t")
 print("1B")
 write.table(no.clusters,"subchallenge1B.txt",row.names=F,col.names=F,quote=F,sep="\t")
 print("1C")
-write.table(cbind(1:no.clusters,table(assignments),optima),"subchallenge1C.txt",row.names=F,col.names=F,quote=F,sep="\t")
+write.table(final_clusters_table,"subchallenge1C.txt",row.names=F,col.names=F,quote=F,sep="\t")
 print("2A")
 write.table(assignments,"subchallenge2A.txt",row.names=F,col.names=F,quote=F,sep="\t")
 print("2B")
