@@ -323,8 +323,8 @@ write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, col.names=T, row.nam
 rm(rho_psi)
 dat = read.table(battenberg_rho_psi_file)
 
-iter = 1000
-burn.in = 300
+iter = 25 #1000
+burn.in = 5 #300
 namecol = 9
 min.frac.snvs = 0.01
 
@@ -387,6 +387,7 @@ Gibbs.subclone.density.est(GS.data.binomial,
 
 #cluster assignment
 cluster.assignment <- getClusterAssignments(GS.data.binomial, density.file = density.file, burn.in = burn.in)
+save.image(file="temp.RData")
 #put outputs into required format
 #remove empty clusters
 occupied.clusters = sort(unique(cluster.assignment$most.likely.cluster))
@@ -420,7 +421,7 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
   rowids = which(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))
   for (rowid in rowids) {
     clusterid = final_clusters_table$cluster.no[rowid]
-    snvs_assigned = final_assignments$cluster==clusterid
+    snvs_assigned = assignments==clusterid
     snvs_assigned[is.na(snvs_assigned)] = F
     
     # Reset the mutation assignments
@@ -432,6 +433,7 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
 # Convert the CCF cluster locations into CP
 final_clusters_table$location = final_clusters_table$location / cellularity
 
+no.muts = length(assignments)
 cellularity = max(optima)
 co.clustering = array(0,c(no.muts,no.muts))
 for(c in 1:no.clusters){
