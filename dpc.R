@@ -431,7 +431,7 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
 }
 
 # Convert the CCF cluster locations into CP
-final_clusters_table$location = final_clusters_table$location / cellularity
+final_clusters_table$location = final_clusters_table$location * cellularity
 
 no.muts = length(assignments)
 cellularity = max(optima)
