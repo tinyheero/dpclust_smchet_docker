@@ -443,7 +443,7 @@ for(c in 1:no.clusters){
 
 print("Writing challenge output files")
 print("1A")
-write.table(cellularity,"subchallenge1A.txt",row.names=F,col.names=F,quote=F,sep="\t")
+write.table(NA,"subchallenge1A.txt",row.names=F,col.names=F,quote=F,sep="\t")
 print("1B")
 write.table(nrow(final_clusters_table),"subchallenge1B.txt",row.names=F,col.names=F,quote=F,sep="\t")
 print("1C")
