@@ -427,7 +427,7 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
 }
 
 # Convert the CCF cluster locations into CP
-final_clusters_table$location = final_clusters_table$location / cellularity
+final_clusters_table$location = final_clusters_table$location * cellularity
 
 # Build a temp co-clustering matrix
 co.clustering = array(0,c(no.muts,no.muts))
