@@ -432,6 +432,7 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
 
 # Convert the CCF cluster locations into CP
 final_clusters_table$location = final_clusters_table$location * cellularity
+no.clusters = nrow(final_clusters_table)
 
 no.muts = length(assignments)
 cellularity = max(optima)
@@ -441,11 +442,15 @@ for(c in 1:no.clusters){
 	co.clustering[indices,indices] = 1
 }
 
+# Assign the not assigned mutations to a dummy cluster
+assignments[is.na(assignments)] = 0
+final_clusters_table = rbind(final_clusters_table, data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0)
+
 print("Writing challenge output files")
 print("1A")
 write.table(NA,"subchallenge1A.txt",row.names=F,col.names=F,quote=F,sep="\t")
 print("1B")
-write.table(nrow(final_clusters_table),"subchallenge1B.txt",row.names=F,col.names=F,quote=F,sep="\t")
+write.table(no.clusters,"subchallenge1B.txt",row.names=F,col.names=F,quote=F,sep="\t")
 print("1C")
 write.table(final_clusters_table,"subchallenge1C.txt",row.names=F,col.names=F,quote=F,sep="\t")
 print("2A")
