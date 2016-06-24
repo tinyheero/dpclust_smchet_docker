@@ -375,7 +375,7 @@ dat = read.table(dpinput_file, stringsAsFactors=F, header=T)
 cellularity = read.table(battenberg_rho_psi_file, stringsAsFactors=F, header=T)["FRAC_GENOME", "rho"]
 
 # Filtering
-dataset = filterDat(dat, is.male=sex=="male", min.mutreads=3, min.depth=3)
+dataset = filterDat(dat, is.male=sex=="male", min.mutreads=1, min.depth=3)
 dat = dataset$dat
 removed_indices = dataset$removed_indices
 
