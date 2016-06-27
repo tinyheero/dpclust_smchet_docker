@@ -1,4 +1,4 @@
-<tool id="dpclust" name="DPClust" version="1.0.1">
+<tool id="dpclust" name="DPClust" version="2.0.0">
     <stdio>
         <exit_code range="1:" />
     </stdio>
@@ -13,8 +13,8 @@
 	<inputs>
 		<param format="vcf" name="input_vcf" type="data" label="VCF file" help="" />
 		<param format="txt" name="input_battenberg" type="data" label="Battenberg file" help="" />
+		<param format="txt" name="input_cellularity" type="data" label="Cellularity file" help="" />
 		<param type="integer" name="sample_number" label="Sample number" help="The ith sample column in the VCF file" value="1"/>
-		<param name="input_cellularity" type="float" value="1.0" label="Cellularity" help="The sample cellularity" />
 	</inputs>
 
 	<outputs>
