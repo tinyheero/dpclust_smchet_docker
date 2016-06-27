@@ -509,6 +509,7 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
 
 # Convert the CCF cluster locations into CP
 final_clusters_table$location = final_clusters_table$location * cellularity
+no.clusters = nrow(final_clusters_table)
 
 # Build the co-clustering matrix
 co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iters, burn.in)
