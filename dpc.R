@@ -459,9 +459,17 @@ for(c in 1:no.clusters){
 	co.clustering[indices,indices] = 1
 }
 
+# Renumber the clusters to satisfy the evaluator
+assignments_temp = assignments
+for (i in 1:nrow(final_clusters_table) {
+	clusterid = final_clusters_table$cluster.no[i]
+	assignments[assignments_temp==clusterid] = i
+}
+final_clusters_table$cluster.no = 1:nrow(final_clusters_table)
+
 # Assign the not assigned mutations to a dummy cluster
 assignments[is.na(assignments)] = 0
-final_clusters_table = rbind(final_clusters_table, data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0))
+final_clusters_table = rbind(data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0),final_clusters_table)
 
 print("Writing challenge output files")
 print("1A")
