@@ -344,7 +344,7 @@ args = commandArgs(TRUE)
 vcfdat = read.table(args[1],sep='\t',comment.char='#', stringsAsFactors=F)
 datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
-cellularity = as.numeric(args[4])
+battenberg_cellularity_file = toString(args[4])
 coclusterCNA = as.logical(args[5])
 mut.assignment.type = as.numeric(args[6])
 sex = "male"
@@ -380,6 +380,7 @@ num.clonal.events.to.add = 1 # Add this many clonal CNA events to the clustering
 min.cna.size = 100 # Minim size in 10kb for a CNA event to be included
 
 # Create a temp Battenberg rho_psi file for preprocessing
+cellularity = read.table(battenberg_cellularity_file, header=T, stringsAsFactors=F)$cellularity
 rho_psi = data.frame(rho=c(NA, cellularity, NA), psi=rep(NA, 3), distance=rep(NA, 3), is.best=rep(NA, 3))
 row.names(rho_psi) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
 battenberg_rho_psi_file = "temp_rho_psi.txt"
@@ -506,26 +507,27 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
   }
   final_clusters_table = final_clusters_table[-rowids,]
 }
+assignments = final_assignments$cluster
 
 # Convert the CCF cluster locations into CP
 final_clusters_table$location = final_clusters_table$location * cellularity
 no.clusters = nrow(final_clusters_table)
 
 # Build the co-clustering matrix
-co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iters, burn.in)
+co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iter, burn.in)
 
 # Assign the not assigned mutations to a dummy cluster
-final_assignments[is.na(final_assignments)] = 0
-final_clusters_table = rbind(data.frame(cluster.no=0, no.of.mutations=sum(final_assignments==0), location=0),final_clusters_table)
+assignments[is.na(assignments)] = 0
+final_clusters_table = rbind(data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0),final_clusters_table)
 
 # Renumber the clusters to satisfy the evaluator
-assignments_temp = final_assignments
+assignments_temp = assignments
 for (i in 1:nrow(final_clusters_table)) {
   clusterid = final_clusters_table$cluster.no[i]
-  final_assignments[assignments_temp==clusterid] = i
+  assignments[assignments_temp==clusterid] = i
 }
 final_clusters_table$cluster.no = 1:nrow(final_clusters_table)
 
 print("Writing challenge output files")
-writeChallengeOutput(battenberg_subclones_file, no.clusters, final_clusters_table, final_assignments, co.clustering)
+writeChallengeOutput(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering)
 q(save="no")
