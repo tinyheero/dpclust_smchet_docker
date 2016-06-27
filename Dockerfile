@@ -1,7 +1,7 @@
 FROM r-base
 
 # Add dependencies
-RUN apt-get update && apt-get install -y libxml2 libxml2-dev libcurl4-gnutls-dev
+RUN apt-get update && apt-get install -y libxml2 libxml2-dev libcurl4-gnutls-dev r-cran-rgl
 
 # Add dpclust(3p) dependencies
 RUN R -q -e 'source("http://bioconductor.org/biocLite.R"); biocLite(c("VariantAnnotation","mcclust","KernSmooth","ks","lattice","ggplot2","gridExtra","reshape2"))'
