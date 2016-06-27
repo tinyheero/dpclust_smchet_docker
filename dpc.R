@@ -257,10 +257,14 @@ guessCellularityFromClonalCopynumber = function(battenberg_subclones_file) {
   cnprofile = read.table(battenberg_subclones_file, header=T, stringsAsFactors=F)
   is_clonal_aberration = cnprofile$frac1_A==1 & cnprofile$nMaj1_A!=cnprofile$nMin1_A & cnprofile$endpos-cnprofile$startpos > 10000000
   
-  rho_guess = sapply(which(is_clonal_aberration), function(index) {
-    (2*cnprofile$BAF[index]-1) / (2*cnprofile$BAF[index]-cnprofile$BAF[index]*(cnprofile$nMaj1_A[index]+cnprofile$nMin1_A[index])-1+cnprofile$nMaj1_A[index])
-  })
-  return(median(rho_guess))
+  if (sum(is_clonal_aberration) > 0) {
+    rho_guess = sapply(which(is_clonal_aberration), function(index) {
+      (2*cnprofile$BAF[index]-1) / (2*cnprofile$BAF[index]-cnprofile$BAF[index]*(cnprofile$nMaj1_A[index]+cnprofile$nMin1_A[index])-1+cnprofile$nMaj1_A[index])
+    })
+    return(median(rho_guess))
+  } else {
+    return(0)
+  }
 }
 
 ############################################################################################
@@ -274,13 +278,21 @@ cellularity = as.numeric(args[4])
 coclusterCNA = as.logical(args[5])
 sex = "male"
 is.male = ifelse(sex=="male", T, F)
+
+# Set the expected chromosomes based on the sex
+if (is.male) {
+  supported_chroms = as.character(c(1:22, "X", "Y"))
+} else {
+  supported_chroms = as.character(c(1:22, "X"))
+}
+
 samplename = "tumour"
 subsamples = c()
 outdir = getwd()
 
 # General parameters
-iter = 1250
-burn.in = 250
+iter = 25 #1250
+burn.in = 5 #250
 namecol = 9
 mut.assignment.type = 1
 conc_param = 0.01
@@ -307,7 +319,7 @@ dat = read.table(battenberg_rho_psi_file)
 #########################################################################
 # Perform preprocessing
 #########################################################################
-packrat::on("~/R_packrat/icgc_production_v2.0/")
+#packrat::on("~/R_packrat/icgc_production_v2.0/")
 library(VariantAnnotation)
 library(dpclust3p)
 library(DPClust)
@@ -347,10 +359,8 @@ dataset = load.data(c(dpinput_file),
                     is.vcf=F,
                     ref.genome.version="hg19",
                     min.depth=min.depth,
-                    min.mutreads=min.mutreads)
-
-
-
+                    min.mutreads=min.mutreads,
+		    supported_chroms=supported_chroms)
 
 if (coclusterCNA) {
   # Run preprocessing on the copy number data
