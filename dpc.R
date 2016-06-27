@@ -183,6 +183,11 @@ add_removed_snvs = function(dataset, snv_assignment_table) {
       }
     }
   }
+  
+  # Sort the output in the same order as the dataset
+  chrpos_input = paste(dataset$chromosome, dataset$position, sep="_")
+  chrpos_output = paste(snv_assignment_table[,1], snv_assignment_table[,3], sep="_")
+  snv_assignment_table = snv_assignment_table[match(chrpos_input, chrpos_output),]
   return(snv_assignment_table)
 }
 
@@ -267,6 +272,71 @@ guessCellularityFromClonalCopynumber = function(battenberg_subclones_file) {
   }
 }
 
+#' Include mutations into a co-assignment matrix that were removed before clustering
+#' @param dat A nxn matrix for n mutations
+#' @param removed_indices A vector with the indices of removed SNVs that need to be added
+#' @param def.value The default value to which the new rows/columns should be set
+#' @return A matrix of (n+length(removed_indices))x(n+length(removed_indices))
+#' @author sd11
+add.muts.back.in = function(dat, removed_indices, def.value=0) {
+  #
+  # Adds in empty columns and rows for mutations that were removed.
+  # Mutations are added sequentially, so this method expects indices
+  # of removed mutations in the original (full) matrix. The empty
+  # mutations will be added in the place where they were removed,
+  # keeping the order in tact.
+  #
+  for (i in removed_indices) { 
+    if (i >= ncol(dat)) {
+      dat = cbind(dat, rep(def.value, nrow(dat)))
+      dat = rbind(dat, rep(def.value, ncol(dat)))
+    } else if (i==1) {
+      dat = cbind(rep(def.value, nrow(dat)), dat)
+      dat = rbind(rep(def.value, ncol(dat)), dat)
+    } else {
+      dat = cbind(dat[,1:(i-1)], rep(def.value, nrow(dat)), dat[,i:ncol(dat)])
+      dat = rbind(dat[1:(i-1),], rep(def.value, ncol(dat)), dat[i:nrow(dat),])
+    }
+  }
+  return(dat)
+}
+
+#' Function that builds a SNV coassignment probability matrix from the trace
+#' @param mut.assignment.type Type of SNV assignment performed (i.e. what output files to expect)
+#' @param dataset A dataset object
+#' @param no.iters Total iterations
+#' @param no.iters.burn.in Iterations to use as burnin
+#' @return A nxn matrix that contains co-assignment probabilities for each pair of SNVs, including the ones not used during clustering (all 0)
+#' @author sd11
+get.snv.coassignment.matrix = function(mut.assignment.type, dataset, no.iters, no.iters.burn.in) {
+  if (mut.assignment.type==1) {
+    load("tumour_gsdata.RData")
+    coassignments = mcclust::comp.psm(GS.data$S.i[no.iters.burn.in:no.iters, ])
+  } else if (mut.assignment.type==4) {
+    # Option 4 already has created this matrix, load it and add removed indices
+    load("tumour_coassignment_matrix.RData")
+  }
+  snv_index = which(dataset$mutationType=="SNV")
+  coassignments_snvs = coassignments[snv_index,snv_index]
+  co.clustering = add.muts.back.in(coassignments_snvs, dataset$removed_indices, def.value=0)
+  return(co.clustering)
+}
+
+writeChallengeOutput = function(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering) {
+  print("Writing challenge output files")
+  print("1A")
+  write.table(guessCellularityFromClonalCopynumber(battenberg_subclones_file),"subchallenge1A.txt",row.names=F,col.names=F,quote=F,sep="\t")
+  print("1B")
+  write.table(no.clusters,"subchallenge1B.txt",row.names=F,col.names=F,quote=F,sep="\t")
+  print("1C")
+  write.table(final_clusters_table,"subchallenge1C.txt",row.names=F,col.names=F,quote=F,sep="\t")
+  print("2A")
+  write.table(assignments,"subchallenge2A.txt",row.names=F,col.names=F,quote=F,sep="\t")
+  print("2B")
+  write.table(co.clustering,"subchallenge2B.txt",row.names=F,col.names=F,quote=F,sep="\t")
+  print("DONE")
+}
+
 ############################################################################################
 # Start pipeline
 ############################################################################################
@@ -276,6 +346,7 @@ datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
 cellularity = as.numeric(args[4])
 coclusterCNA = as.logical(args[5])
+mut.assignment.type = as.numeric(args[6])
 sex = "male"
 is.male = ifelse(sex=="male", T, F)
 
@@ -288,13 +359,13 @@ if (is.male) {
 
 samplename = "tumour"
 subsamples = c()
-outdir = getwd()
+outdir = paste0(getwd(), "/")
 
 # General parameters
 iter = 25 #1250
 burn.in = 5 #250
 namecol = 9
-mut.assignment.type = 1
+# mut.assignment.type = 1
 conc_param = 0.01
 cluster_conc = 5
 most.similar.mut = NA # Not allowing downsampling for now
@@ -439,24 +510,21 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
 # Convert the CCF cluster locations into CP
 final_clusters_table$location = final_clusters_table$location * cellularity
 
-# Build a temp co-clustering matrix
-co.clustering = array(0,c(no.muts,no.muts))
-for (c in final_clusters_table$cluster.no) {
-	indices = which(final_assignments$cluster==c)
-	co.clustering[indices, indices] = 1
+# Build the co-clustering matrix
+co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iters, burn.in)
+
+# Assign the not assigned mutations to a dummy cluster
+assignments[is.na(assignments)] = 0
+final_clusters_table = rbind(data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0),final_clusters_table)
+
+# Renumber the clusters to satisfy the evaluator
+assignments_temp = assignments
+for (i in 1:nrow(final_clusters_table)) {
+  clusterid = final_clusters_table$cluster.no[i]
+  assignments[assignments_temp==clusterid] = i
 }
+final_clusters_table$cluster.no = 1:nrow(final_clusters_table)
 
 print("Writing challenge output files")
-print("1A")
-write.table(guessCellularityFromClonalCopynumber(battenberg_subclones_file),"subchallenge1A.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("1B")
-write.table(nrow(final_clusters_table),"subchallenge1B.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("1C")
-write.table(final_clusters_table[,c("cluster.no", "no.of.mutations", "location")],"subchallenge1C.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("2A")
-write.table(data.frame(x=final_assignments$cluster),"subchallenge2A.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("2B")
-write.table(co.clustering,"subchallenge2B.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("DONE")
+writeChallengeOutput(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering)
 q(save="no")
-#How to Run : Rscript DPC_demo.R '/dir/to/vcf.vcf' 'number_of_sample'
