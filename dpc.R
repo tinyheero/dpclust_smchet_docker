@@ -514,17 +514,17 @@ final_clusters_table$location = final_clusters_table$location * cellularity
 co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iters, burn.in)
 
 # Assign the not assigned mutations to a dummy cluster
-assignments[is.na(assignments)] = 0
-final_clusters_table = rbind(data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0),final_clusters_table)
+final_assignments[is.na(final_assignments)] = 0
+final_clusters_table = rbind(data.frame(cluster.no=0, no.of.mutations=sum(final_assignments==0), location=0),final_clusters_table)
 
 # Renumber the clusters to satisfy the evaluator
-assignments_temp = assignments
+assignments_temp = final_assignments
 for (i in 1:nrow(final_clusters_table)) {
   clusterid = final_clusters_table$cluster.no[i]
-  assignments[assignments_temp==clusterid] = i
+  final_assignments[assignments_temp==clusterid] = i
 }
 final_clusters_table$cluster.no = 1:nrow(final_clusters_table)
 
 print("Writing challenge output files")
-writeChallengeOutput(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering)
+writeChallengeOutput(battenberg_subclones_file, no.clusters, final_clusters_table, final_assignments, co.clustering)
 q(save="no")
