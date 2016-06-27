@@ -323,21 +323,43 @@ guessCellularityFromClonalCopynumber = function(battenberg_subclones_file) {
   return(median(rho_guess))
 }
 
+writeChallengeOutput = function(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering) {
+	print("Writing challenge output files")
+	print("1A")
+	write.table(guessCellularityFromClonalCopynumber(battenberg_subclones_file),"subchallenge1A.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	print("1B")
+	write.table(no.clusters,"subchallenge1B.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	print("1C")
+	write.table(final_clusters_table,"subchallenge1C.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	print("2A")
+	write.table(assignments,"subchallenge2A.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	print("2B")
+	write.table(co.clustering,"subchallenge2B.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	print("DONE")
+}
+
+
 #MAIN CODE BLOCK
 args = commandArgs(TRUE)
 vcfdat = read.table(args[1],sep='\t',comment.char='#', stringsAsFactors=F)
 datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
 battenberg_cellularity_file = toString(args[4])
+cellularity_only_pipeline = as.logical(args[5])
 sex = "male"
 
-# Generate a Battenberg rho/psi file for the preprocessing pipeline
-cellularity = read.table(battenberg_cellularity_file, header=T, stringsAsFactors=F)$cellularity
-rho_psi = data.frame(rho=c(NA, cellularity, NA), psi=rep(NA, 3), distance=rep(NA, 3), is.best=rep(NA, 3))
-row.names(rho_psi) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
-battenberg_rho_psi_file = "temp_rho_psi.txt"
-write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, col.names=T, row.names=T, sep="\t")
-rm(rho_psi)
+if (!cellularity_only_pipeline) {
+	# Generate a Battenberg rho/psi file for the preprocessing pipeline
+	cellularity = read.table(battenberg_cellularity_file, header=T, stringsAsFactors=F)$cellularity
+	rho_psi = data.frame(rho=c(NA, cellularity, NA), psi=rep(NA, 3), distance=rep(NA, 3), is.best=rep(NA, 3))
+	row.names(rho_psi) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
+	battenberg_rho_psi_file = "temp_rho_psi.txt"
+	write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, col.names=T, row.names=T, sep="\t")
+	rm(rho_psi)
+} else {
+	writeChallengeOutput(battenberg_subclones_file, NA, NA, NA, NA)
+	q(save="no")
+}
 
 iter = 25 #1000
 burn.in = 5 #300
@@ -471,16 +493,5 @@ for (i in 1:nrow(final_clusters_table)) {
 final_clusters_table$cluster.no = 1:nrow(final_clusters_table)
 
 print("Writing challenge output files")
-print("1A")
-write.table(guessCellularityFromClonalCopynumber(battenberg_subclones_file),"subchallenge1A.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("1B")
-write.table(no.clusters,"subchallenge1B.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("1C")
-write.table(final_clusters_table,"subchallenge1C.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("2A")
-write.table(assignments,"subchallenge2A.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("2B")
-write.table(co.clustering,"subchallenge2B.txt",row.names=F,col.names=F,quote=F,sep="\t")
-print("DONE")
+writeChallengeOutput(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering)
 q(save="no")
-#How to Run : Rscript DPC_demo.R '/dir/to/vcf.vcf' 'number_of_sample'
