@@ -7,7 +7,7 @@
 		<container type="docker">dpclust</container>
 	</requirements>
 	<command interpreter="Rscript"><![CDATA[
-		dpc.R ${input_vcf} ${sample_number} ${input_battenberg} ${input_cellularity} ${cellularity_only}
+		dpc.R ${input_vcf} ${sample_number} ${input_battenberg} ${input_cellularity}
 	]]></command>
 
 	<inputs>
@@ -15,7 +15,6 @@
 		<param format="txt" name="input_battenberg" type="data" label="Battenberg file" help="" />
 		<param format="txt" name="input_cellularity" type="data" label="Cellularity file" help="" />
 		<param type="integer" name="sample_number" label="Sample number" help="The ith sample column in the VCF file" value="1"/>
-		<param type="boolean" name="cellularity_only" label="Cellularity only" help="Set to true if you want to run the cellularity pipeline only" value="false">
 	</inputs>
 
 	<outputs>
