@@ -12,3 +12,4 @@ RUN R -q -e 'install.packages("/opt/galaxy/tools/dpclust3p_v1.0.1.tar.gz", type=
 
 # DPClust pipeline
 ADD dpc.R /opt/galaxy/tools/dpclust/dpc.R
+ADD dpclust_cellularity.R /opt/galaxy/tools/dpclust/dpclust_cellularity.R

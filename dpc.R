@@ -355,8 +355,8 @@ battenberg_rho_psi_file = "temp_rho_psi.txt"
 write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, col.names=T, row.names=T, sep="\t")
 rm(rho_psi)
 
-iter = 25 #1000
-burn.in = 5 #300
+iter = 1000
+burn.in = 300
 namecol = 9
 min.frac.snvs = 0.01
 
