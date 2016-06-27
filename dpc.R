@@ -340,8 +340,8 @@ write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, col.names=T, row.nam
 rm(rho_psi)
 dat = read.table(battenberg_rho_psi_file)
 
-iter = 1000
-burn.in = 300
+iter = 25 #1000
+burn.in = 5 #300
 namecol = 9
 min.frac.snvs = 0.01
 
@@ -461,7 +461,7 @@ for(c in 1:no.clusters){
 
 # Assign the not assigned mutations to a dummy cluster
 assignments[is.na(assignments)] = 0
-final_clusters_table = rbind(final_clusters_table, data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0)
+final_clusters_table = rbind(final_clusters_table, data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0))
 
 print("Writing challenge output files")
 print("1A")
