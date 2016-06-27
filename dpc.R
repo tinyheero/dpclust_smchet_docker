@@ -461,7 +461,7 @@ for(c in 1:no.clusters){
 
 # Renumber the clusters to satisfy the evaluator
 assignments_temp = assignments
-for (i in 1:nrow(final_clusters_table) {
+for (i in 1:nrow(final_clusters_table)) {
 	clusterid = final_clusters_table$cluster.no[i]
 	assignments[assignments_temp==clusterid] = i
 }
