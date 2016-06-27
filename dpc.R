@@ -329,16 +329,15 @@ vcfdat = read.table(args[1],sep='\t',comment.char='#', stringsAsFactors=F)
 datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
 battenberg_cellularity_file = toString(args[4])
-#cellularity = as.numeric(args[4])
 sex = "male"
 
-#rho_psi = data.frame(rho=c(NA, cellularity, NA), psi=rep(NA, 3), distance=rep(NA, 3), is.best=rep(NA, 3))
-#row.names(rho_psi) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
-#
-#battenberg_rho_psi_file = "temp_rho_psi.txt"
-#write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, col.names=T, row.names=T, sep="\t")
-#rm(rho_psi)
-#dat = read.table(battenberg_rho_psi_file)
+# Generate a Battenberg rho/psi file for the preprocessing pipeline
+cellularity = read.table(battenberg_cellularity_file, header=T, stringsAsFactors=F)$cellularity
+rho_psi = data.frame(rho=c(NA, cellularity, NA), psi=rep(NA, 3), distance=rep(NA, 3), is.best=rep(NA, 3))
+row.names(rho_psi) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
+battenberg_rho_psi_file = "temp_rho_psi.txt"
+write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, col.names=T, row.names=T, sep="\t")
+rm(rho_psi)
 
 iter = 25 #1000
 burn.in = 5 #300
@@ -373,7 +372,6 @@ runGetDirichletProcessInfo(loci_file=loci_file,
 # Load the data
 dat = read.table(dpinput_file, stringsAsFactors=F, header=T)
 cellularity = read.table(battenberg_cellularity_file, header=T, stringsAsFactors=F)$cellularity
-#cellularity = read.table(battenberg_rho_psi_file, stringsAsFactors=F, header=T)["FRAC_GENOME", "rho"]
 
 # Filtering
 dataset = filterDat(dat, is.male=sex=="male", min.mutreads=1, min.depth=3)
