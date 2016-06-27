@@ -10,10 +10,14 @@ guessCellularityFromClonalCopynumber = function(battenberg_subclones_file) {
   cnprofile = read.table(battenberg_subclones_file, header=T, stringsAsFactors=F)
   is_clonal_aberration = cnprofile$frac1_A==1 & cnprofile$nMaj1_A!=cnprofile$nMin1_A & cnprofile$endpos-cnprofile$startpos > 10000000
   
-  rho_guess = sapply(which(is_clonal_aberration), function(index) {
-    (2*cnprofile$BAF[index]-1) / (2*cnprofile$BAF[index]-cnprofile$BAF[index]*(cnprofile$nMaj1_A[index]+cnprofile$nMin1_A[index])-1+cnprofile$nMaj1_A[index])
-  })
-  return(median(rho_guess))
+  if (sum(is_clonal_aberration) > 0) {
+    rho_guess = sapply(which(is_clonal_aberration), function(index) {
+      (2*cnprofile$BAF[index]-1) / (2*cnprofile$BAF[index]-cnprofile$BAF[index]*(cnprofile$nMaj1_A[index]+cnprofile$nMin1_A[index])-1+cnprofile$nMaj1_A[index])
+    })
+    return(median(rho_guess))
+  } else {
+    return(0)
+  }
 }
 
 args = commandArgs(T)
