@@ -345,8 +345,8 @@ vcfdat = read.table(args[1],sep='\t',comment.char='#', stringsAsFactors=F)
 datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
 battenberg_cellularity_file = toString(args[4])
-coclusterCNA = as.logical(args[5])
-mut.assignment.type = as.numeric(args[6])
+coclusterCNA = T #as.logical(args[5])
+mut.assignment.type = 1 #as.numeric(args[6])
 sex = "male"
 is.male = ifelse(sex=="male", T, F)
 
@@ -514,7 +514,13 @@ final_clusters_table$location = final_clusters_table$location * cellularity
 no.clusters = nrow(final_clusters_table)
 
 # Build the co-clustering matrix
-co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iter, burn.in)
+# co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iter, burn.in)
+no.muts = length(assignments)
+co.clustering = array(0,c(no.muts,no.muts))
+for(c in 1:no.clusters){
+  indices = which(assignments==c)
+  co.clustering[indices,indices] = 1
+}
 
 # Assign the not assigned mutations to a dummy cluster
 assignments[is.na(assignments)] = 0
