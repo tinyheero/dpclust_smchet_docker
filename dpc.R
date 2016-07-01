@@ -477,6 +477,7 @@ for(c in 1:no.clusters){
 	indices = which(assignments==c)
 	co.clustering[indices,indices] = 1
 }
+diag(co.clustering) = 1
 
 # Assign the not assigned mutations to a dummy cluster
 assignments[is.na(assignments)] = 0
