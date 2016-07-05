@@ -98,17 +98,6 @@ writeStandardFinalOutput = function(clustering, dataset, most.similar.mut, outfi
   }
   
   ########################################################################
-  # Write final cluster locations
-  ########################################################################
-  if (ncol(clustering$cluster.locations) > 3) {
-    # nD based clustering
-    write.table(clustering$cluster.locations, paste(outfiles.prefix,"_bestClusterInfo.txt",sep=""), col.names=c("cluster.no", paste(samplename,subsamplenames,sep=""), "no.of.mutations"), sep="\t", quote=F, row.names=F)
-  } else {
-    # 1D based
-    write.table(clustering$cluster.locations, paste(outfiles.prefix,"_bestClusterInfo.txt",sep=""), col.names=c("cluster.no","location","no.of.mutations"), row.names=F, sep="\t", quote=F)
-  }
-  
-  ########################################################################
   # Add the removed mutations back in
   ########################################################################
   output = cbind(dataset$chromosome[,1], dataset$position[,1]-1, dataset$position[,1], clustering$best.node.assignments, clustering$best.assignment.likelihoods)
@@ -159,6 +148,19 @@ writeStandardFinalOutput = function(clustering, dataset, most.similar.mut, outfi
     print("Saving assignment table in")
     print(paste(outfiles.prefix, "_mutation_assignments.png", sep=""))
     plotAssignmentTable(clustering$cluster.locations, paste(outfiles.prefix, "_mutation_assignments.png", sep=""), num_samples=num_samples)
+    cluster_locations = clustering$cluster.locations
+  }
+  
+  
+  ########################################################################
+  # Write final cluster locations
+  ########################################################################
+  if (ncol(clustering$cluster.locations) > 3) {
+    # nD based clustering
+    write.table(cluster_locations, paste(outfiles.prefix,"_bestClusterInfo.txt",sep=""), col.names=c("cluster.no", paste(samplename,subsamplenames,sep=""), "no.of.mutations"), sep="\t", quote=F, row.names=F)
+  } else {
+    # 1D based
+    write.table(cluster_locations, paste(outfiles.prefix,"_bestClusterInfo.txt",sep=""), col.names=c("cluster.no","location","no.of.mutations"), row.names=F, sep="\t", quote=F)
   }
   
   ########################################################################
