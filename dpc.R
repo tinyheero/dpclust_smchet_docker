@@ -112,8 +112,11 @@ writeStandardFinalOutput = function(clustering, dataset, most.similar.mut, outfi
   # Add the removed mutations back in
   ########################################################################
   output = cbind(dataset$chromosome[,1], dataset$position[,1]-1, dataset$position[,1], clustering$best.node.assignments, clustering$best.assignment.likelihoods)
+  save(file="temp.RData", output, dataset)
   print("Adding in removed indices")
-  output = add_removed_snvs(dataset, output)
+  res = add_removed_snvs(dataset, output)
+  output = res$snv_assignment_table
+  mutationType = res$mutationType
   
   ########################################################################
   # Save the indices of the mutations that were not used during the analysis
@@ -125,13 +128,13 @@ writeStandardFinalOutput = function(clustering, dataset, most.similar.mut, outfi
   # Save the consensus mutation assignments
   ########################################################################
   colnames(output) = c("chr", "start", "end", "cluster", "likelihood")
-  write.table(output[dataset$mutationType=="SNV",], file=paste(outfiles.prefix, "_bestConsensusAssignments.bed", sep=""), quote=F, row.names=F, sep="\t")
+  write.table(output[mutationType=="SNV",], file=paste(outfiles.prefix, "_bestConsensusAssignments.bed", sep=""), quote=F, row.names=F, sep="\t")
   
   ########################################################################
   # Save the CNA assignments separately
   ########################################################################
-  if (any(dataset$mutationType=="CNA")) {
-    write.table(output[dataset$mutationType=="CNA",], file=paste(outfiles.prefix, "_bestConsensusAssignmentsPseudoSNV.bed", sep=""), quote=F, row.names=F, sep="\t")
+  if (any(mutationType=="CNA")) {
+    write.table(output[mutationType=="CNA",], file=paste(outfiles.prefix, "_bestConsensusAssignmentsPseudoSNV.bed", sep=""), quote=F, row.names=F, sep="\t")
     # Assign the CNAs to clusters using their pseudoSNV representations
     cndata = assign_cnas_to_clusters(dataset$cndata, output)
     write.table(cndata, file=paste(outfiles.prefix, "_bestCNAassignments.txt", sep=""), quote=F, row.names=F, sep="\t")
@@ -145,7 +148,7 @@ writeStandardFinalOutput = function(clustering, dataset, most.similar.mut, outfi
     # This removes pseudo SNVs as the assignmentTable will add an extra column for CNAs
     cluster_locations = clustering$cluster.locations
     cluster_locations[,3] = rep(0, nrow(cluster_locations))
-    mut_assignments = table(output[dataset$mutationType=="SNV","cluster"])
+    mut_assignments = table(output[mutationType=="SNV","cluster"])
     for (i in 1:nrow(cluster_locations)) {
       if (as.character(cluster_locations[i,1]) %in% names(mut_assignments)) {
         cluster_locations[i,3] = mut_assignments[as.character(cluster_locations[i,1])]
@@ -172,23 +175,31 @@ writeStandardFinalOutput = function(clustering, dataset, most.similar.mut, outfi
 #' @return The snv_assignment_table with the removed mutations added into the position they were originally
 #' @author sd11
 add_removed_snvs = function(dataset, snv_assignment_table) {
+  mutationType = as.character(dataset$mutationType)
   if (length(dataset$removed_indices) > 0) {
     for (i in dataset$removed_indices) {
       if (i==1) {
         snv_assignment_table = rbind(c(dataset$chromosome.not.filtered[i], dataset$mut.position.not.filtered[i]-1, dataset$mut.position.not.filtered[i], NA, NA), snv_assignment_table)
+        mutationType = c("SNV", mutationType)
       } else if (i >= nrow(snv_assignment_table)) {
         snv_assignment_table = rbind(snv_assignment_table, c(dataset$chromosome.not.filtered[i], dataset$mut.position.not.filtered[i]-1, dataset$mut.position.not.filtered[i], NA, NA))
+        mutationType = c(mutationType, "SNV")
       } else {
         snv_assignment_table = rbind(snv_assignment_table[1:(i-1),], c(dataset$chromosome.not.filtered[i], dataset$mut.position.not.filtered[i]-1, dataset$mut.position.not.filtered[i], NA, NA), snv_assignment_table[i:nrow(snv_assignment_table),])
+        mutationType = c(mutationType[1:(i-1)], "SNV", mutationType[i:length(mutationType)])
       }
     }
   }
   
   # Sort the output in the same order as the dataset
-  chrpos_input = paste(dataset$chromosome, dataset$position, sep="_")
+  chrpos_input = paste(dataset$chromosome.not.filtered, dataset$mut.position.not.filtered, sep="_")
+  if (!is.null(dataset$cndata)) {
+    chrpos_input = c(chrpos_input, paste(dataset$chromosome[dataset$mutationType=="CNA"], dataset$position[dataset$mutationType=="CNA"], sep="_"))
+  }
+  
   chrpos_output = paste(snv_assignment_table[,1], snv_assignment_table[,3], sep="_")
   snv_assignment_table = snv_assignment_table[match(chrpos_input, chrpos_output),]
-  return(snv_assignment_table)
+  return(list(snv_assignment_table=snv_assignment_table, mutationType=mutationType))
 }
 
 
@@ -362,8 +373,8 @@ subsamples = c()
 outdir = paste0(getwd(), "/")
 
 # General parameters
-iter = 1250
-burn.in = 250
+iter = 25 #1250
+burn.in = 5 #250
 namecol = 9
 # mut.assignment.type = 1
 conc_param = 0.01
