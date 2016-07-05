@@ -373,8 +373,8 @@ subsamples = c()
 outdir = paste0(getwd(), "/")
 
 # General parameters
-iter = 25 #1250
-burn.in = 5 #250
+iter = 1250
+burn.in = 250
 namecol = 9
 # mut.assignment.type = 1
 conc_param = 0.01
