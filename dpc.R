@@ -358,8 +358,8 @@ vcfdat = read.table(args[1],sep='\t',comment.char='#', stringsAsFactors=F)
 datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
 battenberg_cellularity_file = toString(args[4])
-coclusterCNA = T #as.logical(args[5])
-mut.assignment.type = 1 #as.numeric(args[6])
+coclusterCNA = F #as.logical(args[5])
+mut.assignment.type = 4 #1 #as.numeric(args[6])
 sex = "male"
 is.male = ifelse(sex=="male", T, F)
 
@@ -482,7 +482,8 @@ clustering = DirichletProcessClustering(mutCount=dataset$mutCount,
                                         conc_param=conc_param, 
                                         cluster_conc=cluster_conc,
                                         mut.assignment.type=mut.assignment.type,
-                                        most.similar.mut=most.similar.mut)
+                                        most.similar.mut=most.similar.mut,
+                                        min.frac.snvs.cluster=min.frac.snvs)
 
 # Write out the output
 outfiles.prefix = paste(samplename, "_", iter, "iters_", burn.in, "burnin", sep="")
