@@ -285,35 +285,6 @@ guessCellularityFromClonalCopynumber = function(battenberg_subclones_file) {
   }
 }
 
-#' Include mutations into a co-assignment matrix that were removed before clustering
-#' @param dat A nxn matrix for n mutations
-#' @param removed_indices A vector with the indices of removed SNVs that need to be added
-#' @param def.value The default value to which the new rows/columns should be set
-#' @return A matrix of (n+length(removed_indices))x(n+length(removed_indices))
-#' @author sd11
-add.muts.back.in = function(dat, removed_indices, def.value=0) {
-  #
-  # Adds in empty columns and rows for mutations that were removed.
-  # Mutations are added sequentially, so this method expects indices
-  # of removed mutations in the original (full) matrix. The empty
-  # mutations will be added in the place where they were removed,
-  # keeping the order in tact.
-  #
-  for (i in removed_indices) { 
-    if (i >= ncol(dat)) {
-      dat = cbind(dat, rep(def.value, nrow(dat)))
-      dat = rbind(dat, rep(def.value, ncol(dat)))
-    } else if (i==1) {
-      dat = cbind(rep(def.value, nrow(dat)), dat)
-      dat = rbind(rep(def.value, ncol(dat)), dat)
-    } else {
-      dat = cbind(dat[,1:(i-1)], rep(def.value, nrow(dat)), dat[,i:ncol(dat)])
-      dat = rbind(dat[1:(i-1),], rep(def.value, ncol(dat)), dat[i:nrow(dat),])
-    }
-  }
-  return(dat)
-}
-
 #' Function that builds a SNV coassignment probability matrix from the trace
 #' @param mut.assignment.type Type of SNV assignment performed (i.e. what output files to expect)
 #' @param dataset A dataset object
