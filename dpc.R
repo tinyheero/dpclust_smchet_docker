@@ -409,6 +409,8 @@ GS.data.binomial = subclone.dirichlet.gibbs(y=dat$mut.count,
                                             cellularity=cellularity,
                                             no.chrs.bearing.mut=dat$no.chrs.bearing.mut,
                                             iter=iter)
+GS.data = GS.data.binomial
+save(GS.data, "tumour_gsdata.RData")
 
 # Density estimator
 density.file = "density.txt"
@@ -423,7 +425,7 @@ Gibbs.subclone.density.est(GS.data.binomial,
 
 #cluster assignment
 cluster.assignment <- getClusterAssignments(GS.data.binomial, density.file = density.file, burn.in = burn.in)
-save.image(file="temp.RData")
+save.image(file="snapshot_after_assigning.RData")
 #put outputs into required format
 #remove empty clusters
 occupied.clusters = sort(unique(cluster.assignment$most.likely.cluster))
