@@ -330,7 +330,7 @@ datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
 battenberg_cellularity_file = toString(args[4])
 coclusterCNA = F #as.logical(args[5])
-mut.assignment.type = 4 #1 #as.numeric(args[6])
+mut.assignment.type = 1 #1 #as.numeric(args[6])
 sex = "male"
 is.male = ifelse(sex=="male", T, F)
 
