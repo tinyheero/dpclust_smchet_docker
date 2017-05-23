@@ -379,6 +379,7 @@ most.similar.mut = NA # Not allowing downsampling for now
 min.mutreads = 0
 min.depth = 1
 min.frac.snvs = 0.01 # Minimum fraction of total SNVs required to call a subclone real
+max.considered.clusters = 20
 
 # CN co-clustering parameters
 add.conflicts = F # Make the conflicts matrix in a dataset - Flag pertains to both copy number and mut2mut phasing
@@ -476,7 +477,9 @@ clustering = DirichletProcessClustering(mutCount=dataset$mutCount,
                                         cluster_conc=cluster_conc,
                                         mut.assignment.type=mut.assignment.type,
                                         most.similar.mut=most.similar.mut,
-                                        min.frac.snvs.cluster=min.frac.snvs)
+                                        min.frac.snvs.cluster=min.frac.snvs,
+                                        max.considered.clusters=max.considered.clusters)
+
 
 # Write out the output
 outfiles.prefix = paste(samplename, "_", iter, "iters_", burn.in, "burnin", sep="")
@@ -516,19 +519,78 @@ if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
 }
 assignments = final_assignments$cluster
 
+# Screen for impossible superclones and merge them with the clone
+is_superclone = final_clusters_table$location * cellularity > 1
+is_clone = abs(final_clusters_table$location - 1) < 0.05
+# If there are two or more options, take the largest cluster
+if (sum(is_clone) > 1) {
+  index = which.max(final_clusters_table$no.of.mutations[is_clone])
+  candidates = final_clusters_table$cluster.no[is_clone]
+  is_clone = final_clusters_table$cluster.no==candidates[index]
+}
+
+if (any(is_superclone & !is_clone)) {
+  rowids = which(is_superclone & !is_clone)
+  for (rowid in rowids) {
+    clusterid = final_clusters_table$cluster.no[rowid]
+    snvs_assigned = final_assignments$cluster==clusterid
+    snvs_assigned[is.na(snvs_assigned)] = F
+    
+    # Reset the mutation assignments
+    final_assignments[snvs_assigned, "cluster"] = final_clusters_table$cluster.no[is_clone]
+    final_assignments[snvs_assigned, "likelihood"] = NA
+  }
+  # Add the reassigned mutations
+  final_clusters_table$no.of.mutations[is_clone] = sum(final_assignments$cluster==final_clusters_table$cluster.no[is_clone], na.rm=T)
+  # Drop the rows
+  final_clusters_table = final_clusters_table[-rowids,]
+}
+
 # Convert the CCF cluster locations into CP
 final_clusters_table$location = final_clusters_table$location * cellularity
 no.clusters = nrow(final_clusters_table)
 
 # Build the co-clustering matrix
 # co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iter, burn.in)
+# no.muts = length(assignments)
+# # cellularity = max(optima)
+# co.clustering = array(0,c(no.muts,no.muts))
+# for(c in 1:no.clusters){
+#   indices = which(assignments==c)
+#   co.clustering[indices,indices] = 1
+# }
+# diag(co.clustering) = 1
+load(paste0(samplename, "_gsdata.RData"))
+co.clustering = build_coassignment_prob_matrix_densities(GS.data$S.i, GS.data$pi.h, burn.in)
+
 no.muts = length(assignments)
-# cellularity = max(optima)
-co.clustering = array(0,c(no.muts,no.muts))
-for(c in 1:no.clusters){
-  indices = which(assignments==c)
-  co.clustering[indices,indices] = 1
+previous = 1
+for (i in dataset$removed_indices) {
+  print(i)
+  if (i==1) {
+    co.clustering.new = rbind(array(0, nrow(co.clustering)),
+                              co.clustering)
+    co.clustering.new = cbind(array(0, ncol(co.clustering.new)),
+                              co.clustering.new)
+        
+  } else if (i > nrow(co.clustering)) {
+    co.clustering.new = rbind(co.clustering, 
+                              array(0, c(1, ncol(co.clustering))))
+    co.clustering.new = cbind(co.clustering.new, 
+                              array(0, c(nrow(co.clustering.new), 1)))
+    
+  } else {
+    co.clustering.new = rbind(co.clustering[previous:(i-1), ], 
+                              array(0, c(1, nrow(co.clustering))),
+                              co.clustering[i:nrow(co.clustering), ])
+    co.clustering.new = cbind(co.clustering.new[, previous:(i-1)], 
+                              array(0, c(nrow(co.clustering.new), 1)),
+                              co.clustering.new[, i:ncol(co.clustering.new)])
+  }
+
+  co.clustering = co.clustering.new
 }
+
 diag(co.clustering) = 1
 
 # Assign the not assigned mutations to a dummy cluster
