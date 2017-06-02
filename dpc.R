@@ -357,11 +357,12 @@ sex = "male"
 is.male = ifelse(sex=="male", T, F)
 
 # Set the expected chromosomes based on the sex
-if (is.male) {
-  supported_chroms = as.character(c(1:22, "X", "Y"))
-} else {
-  supported_chroms = as.character(c(1:22, "X"))
-}
+#if (is.male) {
+#  supported_chroms = as.character(c(1:22, "X", "Y"))
+#} else {
+#  supported_chroms = as.character(c(1:22, "X"))
+#}
+supported_chroms = as.character(c(1:22))
 
 # Generate a representation of the rho/psi file that preprocessing needs
 samplename = "tumour"
