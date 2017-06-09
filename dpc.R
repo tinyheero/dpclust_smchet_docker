@@ -530,7 +530,7 @@ if (sum(is_clone) > 1) {
   is_clone = final_clusters_table$cluster.no==candidates[index]
 }
 
-if (any(is_superclone & !is_clone)) {
+if (any(is_superclone & !is_clone) & nrow(final_clusters_table) > 1) {
   rowids = which(is_superclone & !is_clone)
   for (rowid in rowids) {
     clusterid = final_clusters_table$cluster.no[rowid]
@@ -545,11 +545,16 @@ if (any(is_superclone & !is_clone)) {
   final_clusters_table$no.of.mutations[is_clone] = sum(final_assignments$cluster==final_clusters_table$cluster.no[is_clone], na.rm=T)
   # Drop the rows
   final_clusters_table = final_clusters_table[-rowids,]
-}
+} 
 
 # Convert the CCF cluster locations into CP
 final_clusters_table$location = final_clusters_table$location * cellularity
 no.clusters = nrow(final_clusters_table)
+
+# Check for any clusters beyond a CP of 1 - for DREAM evaluator
+if (any(final_clusters_table$location > 1)) {
+	final_clusters_table$location[final_clusters_table$location > 1] = 1
+}
 
 # Build the co-clustering matrix
 # co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iter, burn.in)
