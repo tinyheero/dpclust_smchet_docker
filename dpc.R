@@ -27,20 +27,123 @@ output = array(0, c(length(allele.ref), 4))
 }
 
 #' Dump a file with allele counts in alleleCounter output format
-createAlleleCountsFile = function(vcfdat, datacol, namecol, outfile) {
-    # Allelic depths for the ref and alt alleles (AD), Approximate read depth (DP)
-    tumour_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol]), split = ":", fixed = TRUE)))
-    colnames(tumour_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
-    # get the number of mutant reads into mutReads and the total number of reads at each mutation into totalReads, then run the next line
-    # totalReads <- as.integer(as.vector(tumour_stat[,'DP']))
-    mutCount =  as.integer(unlist(lapply(strsplit(as.vector(tumour_stat[,'AD']),','),'[[',2)))
-    # wtCount = totalReads - mutCount
-    wtCount = as.integer(unlist(lapply(strsplit(as.vector(tumour_stat[,'AD']),','),'[[',1)))
-    counts_table = mutwt2allelecounts(counts.alt=mutCount, 
+createAlleleCountsFile = function(vcfdat, datacol, namecol, outfile, vcf_format) {
+	if (vcf_format =='mutect'){
+		# Allelic depths for the ref and alt alleles (AD), Approximate read depth (DP)
+		tumour_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol]), split = ":", fixed = TRUE)))
+		colnames(tumour_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
+		# get the number of mutant reads into mutReads and the total number of reads at each mutation into totalReads, then run the next line
+		# totalReads <- as.integer(as.vector(tumour_stat[,'DP']))
+		mutCount =  as.integer(unlist(lapply(strsplit(as.vector(tumour_stat[,'AD']),','),'[[',2)))
+		# wtCount = totalReads - mutCount
+		wtCount = as.integer(unlist(lapply(strsplit(as.vector(tumour_stat[,'AD']),','),'[[',1)))
+		counts_table = mutwt2allelecounts(counts.alt=mutCount, 
                                       counts.ref=wtCount, 
                                       allele.alt=as.character(vcfdat$V5), 
                                       allele.ref=as.character(vcfdat$V4))
-                                      
+    }
+	else if (vcf_format =="radia"){
+		tumour_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol]), split = ":", fixed = TRUE)))
+		colnames(tumour_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
+		normal_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol-1]), split = ":", fixed = TRUE)))
+		colnames(normal_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
+
+		alleles <- sapply(c(1:nrow(vcfdat)), function(x) return(paste(vcfdat[x,4],vcfdat[x,5],sep=',')))
+		allele.ref <-  sapply(c(1:nrow(vcfdat)), function(x) {site.alleles <- strsplit(as.vector(alleles[x]),",")[[1]];
+															   normal_ad <- strsplit(as.vector(normal_stat$AD[x]),",")[[1]];
+															   ref <- site.alleles[which.max(normal_ad)];
+															   return(ref)})
+
+		allele.alt <-  sapply(c(1:nrow(vcfdat)), function(x) {site.alleles <- strsplit(as.vector(alleles[x]),",")[[1]];
+                                                               tumour_ad <- strsplit(as.vector(tumour_stat$AD[x]),",")[[1]];
+															   tumour_ad[match(allele.ref[x],site.alleles)] <- 0 
+                                                               alt <- site.alleles[which.max(tumour_ad)]})
+		
+		mutCount <- as.integer(sapply(c(1:nrow(vcfdat)), function(x){ tumour_ad <- strsplit(as.vector(tumour_stat$AD[x]),",")[[1]];
+																	  tumour_alt_count <- tumour_ad[match(allele.alt[x], strsplit(as.vector(alleles[x]),",")[[1]])]}))
+
+		wtCount <- as.integer(sapply(c(1:nrow(vcfdat)), function(x){ tumour_ad <- strsplit(as.vector(tumour_stat$AD[x]),",")[[1]];
+		                                                                      tumour_ref_count <- tumour_ad[match(allele.ref[x], strsplit(as.vector(alleles[x]),",")[[1]])]}))
+		
+
+		counts_table = mutwt2allelecounts(counts.alt=mutCount,
+                                      counts.ref=wtCount,
+                                      allele.alt=allele.alt,
+                                      allele.ref=allele.ref)
+	}
+
+	else if (vcf_format =="perfect"){
+           tumour_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,10]), split = ",", fixed = TRUE)))
+            print(head(tumour_stat))
+            print(str(tumour_stat))
+            tr <- as.numeric(as.character(tumour_stat[,1]))
+            ta <- as.numeric(as.character(tumour_stat[,2]))
+           print(tr[c(1:10)])
+           print(ta[c(1:10)])
+             counts_table = mutwt2allelecounts(counts.alt=ta,
+                                      counts.ref=tr,
+                                      allele.alt=as.character(vcfdat$V5),
+                                      allele.ref=as.character(vcfdat$V4))
+
+   }
+
+	  else if (vcf_format =="somaticsniper"){
+		    tumour_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol]), split = ":", fixed = TRUE)))
+			normal_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol-1]), split = ":", fixed = TRUE)))
+	    	colnames(tumour_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
+	    	colnames(normal_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
+			
+			allele.ref = sapply(c(1:nrow(vcfdat)), function(x) {counts = strsplit(as.vector(normal_stat[x,'BCOUNT']),',')[[1]]; ref = c('A','C','G','T')[which.max(counts)]}) 
+			allele.alt = sapply(c(1:nrow(vcfdat)), function(x) {counts = strsplit(as.vector(tumour_stat[x,'BCOUNT']),',')[[1]]; counts[match(allele.ref[x], c('A','C','G','T'))] <- 0; alt = c('A','C','G','T')[which.max(counts)]})
+
+			mutCount = as.integer(sapply(c(1:nrow(vcfdat)), function(x){alt= match(allele.alt[x], c('A','C','G','T')); mc=strsplit(as.vector(tumour_stat[x,'BCOUNT']),',')[[1]][alt];}));
+			
+			wtCount = as.integer(sapply(c(1:nrow(vcfdat)), function(x){ref= match(allele.ref[x], c('A','C','G','T')); mc=strsplit(as.vector(tumour_stat[x,'BCOUNT']),',')[[1]][ref];}));
+
+
+    		counts_table = mutwt2allelecounts(counts.alt=mutCount,
+                                      counts.ref=wtCount,
+                                      allele.alt=allele.alt,
+                                      allele.ref=allele.ref)
+
+   }
+	else if (vcf_format =="strelka"){
+		tumour_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol]), split = ":", fixed = TRUE)))
+		normal_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol-1]), split = ":", fixed = TRUE)))
+		colnames(tumour_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
+		colnames(normal_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
+	
+		tumour_info = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,8]), split = ";", fixed = TRUE)))
+		tqss <- as.numeric(gsub(".*=","",tumour_info[,6]))
+	    tqss_nt <- as.numeric(gsub(".*=","",tumour_info[,7]))
+		
+		allele.ref <- sapply(c(1:nrow(vcfdat)), function(x){ tier=tqss_nt[x]; 
+													  		 counts = normal_stat[x,6:9]; 
+															 counts.tier <- sapply(counts, function(y) return(strsplit(as.vector(y),',')[[1]][tier]));
+															 ref <- c('A','C','G','T')[which.max(counts.tier)]})
+
+		allele.alt <- sapply(c(1:nrow(vcfdat)), function(x){ tier=tqss[x];
+                                                             counts = tumour_stat[x,6:9];
+	                                                         counts.tier <- sapply(counts, function(y) return(strsplit(as.vector(y),',')[[1]][tier])); 
+                                                             counts.tier[match(allele.ref[x], c('A','C','G','T'))] <-0; 
+															 ref <- c('A','C','G','T')[which.max(counts.tier)]})
+
+
+
+	#    colnames(tumour_stat) = strsplit(as.vector(unique(vcfdat[,namecol])),':')[[1]]
+		mutCount = as.integer(sapply(c(1:nrow(vcfdat)), function(x){alt= paste0(allele.alt[x], 'U');if (!(alt %in% c('AU','CU','GU','TU'))){return(NULL)};tier=tqss[x];  mc=strsplit(as.vector(tumour_stat[x,alt]),',')[[1]];return(mc[tier])}));
+		wtCount = as.integer(sapply(c(1:nrow(vcfdat)), function(x){ref= paste0(allele.ref[x], 'U'); tier=tqss[x];  mc=strsplit(as.vector(tumour_stat[x,ref]),',')[[1]];return(mc[tier])}));
+
+		counts_table = mutwt2allelecounts(counts.alt=mutCount,
+										  counts.ref=wtCount,
+										  allele.alt=allele.alt,
+										  allele.ref=allele.ref)
+
+	   }
+
+
+
+
     output = data.frame(as.character(vcfdat[,1]), vcfdat[,2], counts_table, rowSums(counts_table))
     colnames(output) = c("#CHR","POS","Count_A","Count_C","Count_G","Count_T","Good_depth")
                                       
@@ -351,6 +454,7 @@ vcfdat = read.table(args[1],sep='\t',comment.char='#', stringsAsFactors=F)
 datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
 battenberg_cellularity_file = toString(args[4])
+vcf_format = args[5]
 coclusterCNA = F #as.logical(args[5])
 mut.assignment.type = 1 #1 #as.numeric(args[6])
 sex = "male"
@@ -410,7 +514,7 @@ createLociFile(vcfdat, loci_file, 1,2,4,5)
 
 # Create allelecounts file
 allelecounts_file = "alleleCounts.txt"
-createAlleleCountsFile(vcfdat, datacol, namecol, allelecounts_file)
+createAlleleCountsFile(vcfdat, datacol, namecol, allelecounts_file, vcf_format)
 
 dpinput_file = "allDirichletProcessInfo.txt"
 # Run preprocessing
