@@ -1,4 +1,4 @@
-<tool id="dpclust" name="DPClust" version="2.1.2">
+<tool id="dpclust" name="DPClust" version="2.1.3">
     <stdio>
         <exit_code range="1:" />
     </stdio>
