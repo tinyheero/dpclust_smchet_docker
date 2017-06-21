@@ -467,6 +467,124 @@ writeChallengeOutput = function(battenberg_subclones_file, no.clusters, final_cl
 	print("DONE")
 }
 
+#' Transform the DPClust native output into what the SMC-het expects and then write it to disk
+create_smchet_output = function(final_clusters_table, final_assignments, cellularity, min.frac.snvs, battenberg_subclones_file) {
+  print(final_clusters_table)
+  no.muts = nrow(final_assignments)
+  
+  # Screen for too small clusters and remove them
+  if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
+    # TODO: Maybe only unless supported by CNAs as well?
+    rowids = which(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))
+    for (rowid in rowids) {
+      clusterid = final_clusters_table$cluster.no[rowid]
+      snvs_assigned = final_assignments$cluster==clusterid
+      snvs_assigned[is.na(snvs_assigned)] = F
+      
+      # Reset the mutation assignments
+      final_assignments[snvs_assigned, "cluster"] = NA
+      final_assignments[snvs_assigned, "likelihood"] = NA
+    }
+    final_clusters_table = final_clusters_table[-rowids,]
+  }
+  assignments = final_assignments$cluster
+  
+  # Screen for impossible superclones and merge them with the clone
+  is_superclone = final_clusters_table$location * cellularity > 1
+  is_clone = abs(final_clusters_table$location - 1) < 0.05
+  # If there are two or more options, take the largest cluster
+  if (sum(is_clone) > 1) {
+    index = which.max(final_clusters_table$no.of.mutations[is_clone])
+    candidates = final_clusters_table$cluster.no[is_clone]
+    is_clone = final_clusters_table$cluster.no==candidates[index]
+  }
+  
+  # Merge if there is a superclone, there is also a clone and there is more than a single cluster
+  if (any(is_superclone & !is_clone) & nrow(final_clusters_table) > 1 & any(is_clone)) {
+    rowids = which(is_superclone & !is_clone)
+    for (rowid in rowids) {
+      clusterid = final_clusters_table$cluster.no[rowid]
+      snvs_assigned = final_assignments$cluster==clusterid
+      snvs_assigned[is.na(snvs_assigned)] = F
+      
+      # Reset the mutation assignments
+      final_assignments[snvs_assigned, "cluster"] = final_clusters_table$cluster.no[is_clone]
+      final_assignments[snvs_assigned, "likelihood"] = NA
+    }
+    # Add the reassigned mutations
+    final_clusters_table$no.of.mutations[is_clone] = sum(final_assignments$cluster==final_clusters_table$cluster.no[is_clone], na.rm=T)
+    # Drop the rows
+    final_clusters_table = final_clusters_table[-rowids,]
+  } 
+  
+  # Convert the CCF cluster locations into CP
+  final_clusters_table$location = final_clusters_table$location * cellularity
+  no.clusters = nrow(final_clusters_table)
+  
+  # Check for any clusters beyond a CP of 1 - for DREAM evaluator
+  if (any(final_clusters_table$location > 1)) {
+    final_clusters_table$location[final_clusters_table$location > 1] = 1
+  }
+  
+  # Build the co-clustering matrix
+  # co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iter, burn.in)
+  # no.muts = length(assignments)
+  # # cellularity = max(optima)
+  # co.clustering = array(0,c(no.muts,no.muts))
+  # for(c in 1:no.clusters){
+  #   indices = which(assignments==c)
+  #   co.clustering[indices,indices] = 1
+  # }
+  # diag(co.clustering) = 1
+  load(paste0(samplename, "_gsdata.RData"))
+  co.clustering = build_coassignment_prob_matrix_densities(GS.data$S.i, GS.data$pi.h, burn.in)
+  
+  no.muts = length(assignments)
+  previous = 1
+  for (i in dataset$removed_indices) {
+    print(i)
+    if (i==1) {
+      co.clustering.new = rbind(array(0, nrow(co.clustering)),
+                                co.clustering)
+      co.clustering.new = cbind(array(0, ncol(co.clustering.new)),
+                                co.clustering.new)
+      
+    } else if (i > nrow(co.clustering)) {
+      co.clustering.new = rbind(co.clustering, 
+                                array(0, c(1, ncol(co.clustering))))
+      co.clustering.new = cbind(co.clustering.new, 
+                                array(0, c(nrow(co.clustering.new), 1)))
+      
+    } else {
+      co.clustering.new = rbind(co.clustering[previous:(i-1), ], 
+                                array(0, c(1, nrow(co.clustering))),
+                                co.clustering[i:nrow(co.clustering), ])
+      co.clustering.new = cbind(co.clustering.new[, previous:(i-1)], 
+                                array(0, c(nrow(co.clustering.new), 1)),
+                                co.clustering.new[, i:ncol(co.clustering.new)])
+    }
+    
+    co.clustering = co.clustering.new
+  }
+  
+  diag(co.clustering) = 1
+  
+  # Assign the not assigned mutations to a dummy cluster
+  assignments[is.na(assignments)] = 0
+  final_clusters_table = rbind(data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0),final_clusters_table)
+  
+  # Renumber the clusters to satisfy the evaluator
+  assignments_temp = assignments
+  for (i in 1:nrow(final_clusters_table)) {
+    clusterid = final_clusters_table$cluster.no[i]
+    assignments[assignments_temp==clusterid] = i
+  }
+  final_clusters_table$cluster.no = 1:nrow(final_clusters_table)
+  
+  print("Writing challenge output files")
+  writeChallengeOutput(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering)
+}
+
 ############################################################################################
 # Start pipeline
 ############################################################################################
@@ -621,121 +739,7 @@ writeStandardFinalOutput(clustering=clustering,
 # Challenge output
 #########################################################################
 # Read in the final output to produce the required data
-# outfiles.prefix = "tumour_1250iters_250burnin"
 final_clusters_table = read.table(paste0(outfiles.prefix, "_bestClusterInfo.txt"), header=T, stringsAsFactors=F)
 final_assignments = read.table(paste0(outfiles.prefix, "_bestConsensusAssignments.bed"), header=T, stringsAsFactors=F)
-
-print(final_clusters_table)
-no.muts = nrow(final_assignments)
-
-# Screen for too small clusters and remove them
-if (any(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))) {
-  # TODO: Maybe only unless supported by CNAs as well?
-  rowids = which(final_clusters_table$no.of.mutations < (min.frac.snvs*no.muts))
-  for (rowid in rowids) {
-    clusterid = final_clusters_table$cluster.no[rowid]
-    snvs_assigned = final_assignments$cluster==clusterid
-    snvs_assigned[is.na(snvs_assigned)] = F
-    
-    # Reset the mutation assignments
-    final_assignments[snvs_assigned, "cluster"] = NA
-    final_assignments[snvs_assigned, "likelihood"] = NA
-  }
-  final_clusters_table = final_clusters_table[-rowids,]
-}
-assignments = final_assignments$cluster
-
-# Screen for impossible superclones and merge them with the clone
-is_superclone = final_clusters_table$location * cellularity > 1
-is_clone = abs(final_clusters_table$location - 1) < 0.05
-# If there are two or more options, take the largest cluster
-if (sum(is_clone) > 1) {
-  index = which.max(final_clusters_table$no.of.mutations[is_clone])
-  candidates = final_clusters_table$cluster.no[is_clone]
-  is_clone = final_clusters_table$cluster.no==candidates[index]
-}
-
-if (any(is_superclone & !is_clone) & nrow(final_clusters_table) > 1) {
-  rowids = which(is_superclone & !is_clone)
-  for (rowid in rowids) {
-    clusterid = final_clusters_table$cluster.no[rowid]
-    snvs_assigned = final_assignments$cluster==clusterid
-    snvs_assigned[is.na(snvs_assigned)] = F
-    
-    # Reset the mutation assignments
-    final_assignments[snvs_assigned, "cluster"] = final_clusters_table$cluster.no[is_clone]
-    final_assignments[snvs_assigned, "likelihood"] = NA
-  }
-  # Add the reassigned mutations
-  final_clusters_table$no.of.mutations[is_clone] = sum(final_assignments$cluster==final_clusters_table$cluster.no[is_clone], na.rm=T)
-  # Drop the rows
-  final_clusters_table = final_clusters_table[-rowids,]
-} 
-
-# Convert the CCF cluster locations into CP
-final_clusters_table$location = final_clusters_table$location * cellularity
-no.clusters = nrow(final_clusters_table)
-
-# Check for any clusters beyond a CP of 1 - for DREAM evaluator
-if (any(final_clusters_table$location > 1)) {
-	final_clusters_table$location[final_clusters_table$location > 1] = 1
-}
-
-# Build the co-clustering matrix
-# co.clustering = get.snv.coassignment.matrix(mut.assignment.type, dataset, iter, burn.in)
-# no.muts = length(assignments)
-# # cellularity = max(optima)
-# co.clustering = array(0,c(no.muts,no.muts))
-# for(c in 1:no.clusters){
-#   indices = which(assignments==c)
-#   co.clustering[indices,indices] = 1
-# }
-# diag(co.clustering) = 1
-load(paste0(samplename, "_gsdata.RData"))
-co.clustering = build_coassignment_prob_matrix_densities(GS.data$S.i, GS.data$pi.h, burn.in)
-
-no.muts = length(assignments)
-previous = 1
-for (i in dataset$removed_indices) {
-  print(i)
-  if (i==1) {
-    co.clustering.new = rbind(array(0, nrow(co.clustering)),
-                              co.clustering)
-    co.clustering.new = cbind(array(0, ncol(co.clustering.new)),
-                              co.clustering.new)
-        
-  } else if (i > nrow(co.clustering)) {
-    co.clustering.new = rbind(co.clustering, 
-                              array(0, c(1, ncol(co.clustering))))
-    co.clustering.new = cbind(co.clustering.new, 
-                              array(0, c(nrow(co.clustering.new), 1)))
-    
-  } else {
-    co.clustering.new = rbind(co.clustering[previous:(i-1), ], 
-                              array(0, c(1, nrow(co.clustering))),
-                              co.clustering[i:nrow(co.clustering), ])
-    co.clustering.new = cbind(co.clustering.new[, previous:(i-1)], 
-                              array(0, c(nrow(co.clustering.new), 1)),
-                              co.clustering.new[, i:ncol(co.clustering.new)])
-  }
-
-  co.clustering = co.clustering.new
-}
-
-diag(co.clustering) = 1
-
-# Assign the not assigned mutations to a dummy cluster
-assignments[is.na(assignments)] = 0
-final_clusters_table = rbind(data.frame(cluster.no=0, no.of.mutations=sum(assignments==0), location=0),final_clusters_table)
-
-# Renumber the clusters to satisfy the evaluator
-assignments_temp = assignments
-for (i in 1:nrow(final_clusters_table)) {
-  clusterid = final_clusters_table$cluster.no[i]
-  assignments[assignments_temp==clusterid] = i
-}
-final_clusters_table$cluster.no = 1:nrow(final_clusters_table)
-
-print("Writing challenge output files")
-writeChallengeOutput(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering)
+create_smchet_output(final_clusters_table, final_assignments, cellularity, min.frac.snvs, battenberg_subclones_file)
 q(save="no")
