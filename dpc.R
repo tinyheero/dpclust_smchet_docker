@@ -87,6 +87,27 @@ createAlleleCountsFile = function(vcfdat, datacol, namecol, outfile, vcf_format)
 
    }
 
+   else if (vcf_format =="mutationseq"){
+        tumour_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,8]), split = ";", fixed = TRUE)))
+        tr <- as.numeric(gsub(".*=","",tumour_stat[,2]))
+        ta <- as.numeric(gsub(".*=","",tumour_stat[,3]))
+		nr <- as.numeric(gsub(".*=","",tumour_stat[,4]))
+		na <- as.numeric(gsub(".*=","",tumour_stat[,5]))
+#       print(c(tr,ta))
+		allele.ref <- sapply(c(1:nrow(vcfdat)), function(x) { ifelse(nr[x] >= na[x], return(vcfdat[x,4]),return(vcfdat[x,5]))})
+		allele.alt <- sapply(c(1:nrow(vcfdat)), function(x) { ifelse(allele.ref[x] == vcfdat[x,4], return(vcfdat[x,5]),return(vcfdat[x,4]))})
+		
+		counts.alt <-  sapply(c(1:nrow(vcfdat)), function(x) { ifelse(allele.ref[x] == vcfdat[x,4],ta[x],tr[x])})
+		counts.ref <-  sapply(c(1:nrow(vcfdat)), function(x) { ifelse(allele.ref[x] == vcfdat[x,4],tr[x],ta[x])})
+		
+         counts_table = mutwt2allelecounts(counts.alt=ta,
+                                      counts.ref=tr,
+                                      allele.alt=as.character(vcfdat$V5),
+                                      allele.ref=as.character(vcfdat$V4))
+
+   }
+
+
 	  else if (vcf_format =="somaticsniper"){
 		    tumour_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol]), split = ":", fixed = TRUE)))
 			normal_stat = data.frame(do.call(rbind, strsplit(as.vector(vcfdat[,datacol-1]), split = ":", fixed = TRUE)))
