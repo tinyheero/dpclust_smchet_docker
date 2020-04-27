@@ -18,6 +18,19 @@ is male:
  * Battenberg copy number output file
  * Battenberg purity output file
 
+## How to Run
+
+To run:
+
+```bash
+docker run --rm -v /:/host/ -w "/host/$(pwd)" -it dpclust_smchet \
+    Rscript /opt/galaxy/tools/dpclust/dpc.R \
+        /host/path/to/T2-noXY.truth.scoring_vcf.vcf \
+        1 \
+        /host/path/to/T2-noXY/T2-noXY.battenberg.txt \
+        /host/path/to/T2-noXY/T2-noXY.cellularity_ploidy.txt
+```
+
 ## Note
 
 * The `dpc.R` script has been tested to work with only v1.0.6 of the dpclust3p 
