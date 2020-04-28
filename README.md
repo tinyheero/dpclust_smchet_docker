@@ -10,13 +10,14 @@ It provides an updated Docker image that builds properly.
 docker build -t dpclust_smchet .
 ```
 
-The `dpc.R` pipeline script takes 4 parameters and assumes the sex of the donor 
+The `dpc.R` pipeline script takes 5 parameters and assumes the sex of the donor 
 is male:
 
- * Mutect VCF file
- * There can be multiple samples in the VCF file, supply the number of this sample
- * Battenberg copy number output file
- * Battenberg purity output file
+1. Mutect VCF file
+1. There can be multiple samples in the VCF file, supply the number of this sample
+1. Battenberg copy number output file
+1. Battenberg purity output file
+1. Output directory
 
 ## How to Run
 
@@ -28,7 +29,8 @@ docker run --rm -v /:/host/ -w "/host/$(pwd)" -it dpclust_smchet \
         /host/path/to/T2-noXY.truth.scoring_vcf.vcf \
         1 \
         /host/path/to/T2-noXY/T2-noXY.battenberg.txt \
-        /host/path/to/T2-noXY/T2-noXY.cellularity_ploidy.txt
+        /host/path/to/T2-noXY/T2-noXY.cellularity_ploidy.txt \
+        T2_output
 ```
 
 ## Note

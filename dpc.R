@@ -292,13 +292,13 @@ guessCellularityFromClonalCopynumber = function(battenberg_subclones_file) {
 #' @param no.iters.burn.in Iterations to use as burnin
 #' @return A nxn matrix that contains co-assignment probabilities for each pair of SNVs, including the ones not used during clustering (all 0)
 #' @author sd11
-get.snv.coassignment.matrix = function(mut.assignment.type, dataset, no.iters, no.iters.burn.in) {
+get.snv.coassignment.matrix = function(mut.assignment.type, dataset, no.iters, no.iters.burn.in, outdir) {
   if (mut.assignment.type==1) {
-    load("tumour_gsdata.RData")
+    load(file.path(outdir, "tumour_gsdata.RData"))
     coassignments = mcclust::comp.psm(GS.data$S.i[no.iters.burn.in:no.iters, ])
   } else if (mut.assignment.type==4) {
     # Option 4 already has created this matrix, load it and add removed indices
-    load("tumour_coassignment_matrix.RData")
+    load(file.path(outdir, "tumour_coassignment_matrix.RData"))
   }
   snv_index = which(dataset$mutationType=="SNV")
   coassignments_snvs = coassignments[snv_index,snv_index]
@@ -306,23 +306,31 @@ get.snv.coassignment.matrix = function(mut.assignment.type, dataset, no.iters, n
   return(co.clustering)
 }
 
-writeChallengeOutput = function(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering) {
+writeChallengeOutput = function(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering, outdir) {
 	print("Writing challenge output files")
 	print("1A")
-	write.table(guessCellularityFromClonalCopynumber(battenberg_subclones_file),"subchallenge1A.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	write.table(guessCellularityFromClonalCopynumber(battenberg_subclones_file), file.path(outdir, "subchallenge1A.txt"),row.names=F,col.names=F,quote=F,sep="\t")
 	print("1B")
-	write.table(no.clusters,"subchallenge1B.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	write.table(no.clusters,file.path(outdir, "subchallenge1B.txt"),row.names=F,col.names=F,quote=F,sep="\t")
 	print("1C")
-	write.table(final_clusters_table,"subchallenge1C.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	write.table(final_clusters_table, file.path(outdir, "subchallenge1C.txt"),row.names=F,col.names=F,quote=F,sep="\t")
 	print("2A")
-	write.table(assignments,"subchallenge2A.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	write.table(assignments,file.path(outdir, "subchallenge2A.txt"),row.names=F,col.names=F,quote=F,sep="\t")
 	print("2B")
-	write.table(co.clustering,"subchallenge2B.txt",row.names=F,col.names=F,quote=F,sep="\t")
+	write.table(co.clustering,file.path(outdir, "subchallenge2B.txt"),row.names=F,col.names=F,quote=F,sep="\t")
 	print("DONE")
 }
 
-#' Transform the DPClust native output into what the SMC-het expects and then write it to disk
-create_smchet_output = function(final_clusters_table, final_assignments, cellularity, min.frac.snvs, battenberg_subclones_file) {
+#' Transform the DPClust native output into what the SMC-het expects and then 
+#' write it to disk
+create_smchet_output <- function(
+  final_clusters_table, 
+  final_assignments, 
+  cellularity, 
+  min.frac.snvs, 
+  battenberg_subclones_file,
+  outdir
+) {
   print(final_clusters_table)
   no.muts = nrow(final_assignments)
   
@@ -390,7 +398,7 @@ create_smchet_output = function(final_clusters_table, final_assignments, cellula
   #   co.clustering[indices,indices] = 1
   # }
   # diag(co.clustering) = 1
-  load(paste0(samplename, "_gsdata.RData"))
+  load(file.path(outdir, paste0(samplename, "_gsdata.RData")))
   co.clustering = build_coassignment_prob_matrix_densities(GS.data$S.i, GS.data$pi.h, burn.in)
   
   no.muts = length(assignments)
@@ -436,7 +444,14 @@ create_smchet_output = function(final_clusters_table, final_assignments, cellula
   final_clusters_table$cluster.no = 1:nrow(final_clusters_table)
   
   print("Writing challenge output files")
-  writeChallengeOutput(battenberg_subclones_file, no.clusters, final_clusters_table, assignments, co.clustering)
+  writeChallengeOutput(
+    battenberg_subclones_file, 
+    no.clusters, 
+    final_clusters_table, 
+    assignments, 
+    co.clustering,
+    outdir
+  )
 }
 
 ############################################################################################
@@ -447,6 +462,11 @@ vcfdat = read.table(args[1],sep='\t',comment.char='#', stringsAsFactors=F)
 datacol = as.integer(args[2]) + 10
 battenberg_subclones_file = toString(args[3])
 battenberg_cellularity_file = toString(args[4])
+outdir = toString(args[5])
+
+if (! dir.exists(outdir))
+  dir.create(outdir, recursive = TRUE)
+
 coclusterCNA = F #as.logical(args[5])
 mut.assignment.type = 1 #1 #as.numeric(args[6])
 sex = "male"
@@ -463,7 +483,6 @@ supported_chroms = as.character(c(1:22))
 # Generate a representation of the rho/psi file that preprocessing needs
 samplename = "tumour"
 subsamples = c()
-outdir = paste0(getwd(), "/")
 
 # General parameters
 iter = 1250
@@ -488,7 +507,7 @@ min.cna.size = 100 # Minim size in 10kb for a CNA event to be included
 cellularity = read.table(battenberg_cellularity_file, header=T, stringsAsFactors=F)$cellularity
 rho_psi = data.frame(rho=c(NA, cellularity, NA), psi=rep(NA, 3), distance=rep(NA, 3), is.best=rep(NA, 3))
 row.names(rho_psi) = c("ASCAT", "FRAC_GENOME", "REF_SEG")
-battenberg_rho_psi_file = "temp_rho_psi.txt"
+battenberg_rho_psi_file <- file.path(outdir, "temp_rho_psi.txt")
 write.table(rho_psi, file=battenberg_rho_psi_file, quote=F, col.names=T, row.names=T, sep="\t")
 rm(rho_psi)
 
@@ -501,14 +520,14 @@ library(dpclust3p)
 library(DPClust)
 
 # Create loci file
-loci_file = "loci.txt"
+loci_file <- file.path(outdir, "loci.txt")
 createLociFile(vcfdat, loci_file, 1,2,4,5)
 
 # Create allelecounts file
-allelecounts_file = "alleleCounts.txt"
+allelecounts_file <- file.path(outdir, "alleleCounts.txt")
 createAlleleCountsFile(vcfdat, datacol, namecol, allelecounts_file)
 
-dpinput_file = "allDirichletProcessInfo.txt"
+dpinput_file = file.path(outdir, "allDirichletProcessInfo.txt")
 # Run preprocessing
 runGetDirichletProcessInfo(loci_file=loci_file, 
                            allele_frequencies_file=allelecounts_file, 
@@ -553,7 +572,7 @@ if (coclusterCNA) {
                                      min.cna.size=min.cna.size)
   dataset$cndata = cndata
 }
-save(file="dataset.RData", dataset)
+save(file = file.path(outdir, "dataset.RData"), dataset)
 
 #########################################################################
 # DPClust
@@ -579,7 +598,10 @@ clustering = DirichletProcessClustering(mutCount=dataset$mutCount,
 
 
 # Write out the output
-outfiles.prefix = paste(samplename, "_", iter, "iters_", burn.in, "burnin", sep="")
+outfiles.prefix <-
+  file.path(
+    outdir, paste(samplename, "_", iter, "iters_", burn.in, "burnin", sep="")
+  )
 writeStandardFinalOutput(clustering=clustering, 
                          dataset=dataset,
                          most.similar.mut=most.similar.mut,
@@ -594,5 +616,13 @@ writeStandardFinalOutput(clustering=clustering,
 # Read in the final output to produce the required data
 final_clusters_table = read.table(paste0(outfiles.prefix, "_bestClusterInfo.txt"), header=T, stringsAsFactors=F)
 final_assignments = read.table(paste0(outfiles.prefix, "_bestConsensusAssignments.bed"), header=T, stringsAsFactors=F)
-create_smchet_output(final_clusters_table, final_assignments, cellularity, min.frac.snvs, battenberg_subclones_file)
+create_smchet_output(
+  final_clusters_table, 
+  final_assignments, 
+  cellularity, 
+  min.frac.snvs, 
+  battenberg_subclones_file,
+  outdir
+)
 q(save="no")
+
